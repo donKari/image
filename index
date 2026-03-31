@@ -2338,7 +2338,7 @@ const Auth = (() => {
     }
   }
 
-  return { openModal, closeModal, switchModal, login, loginDemo, register, logout };
+  return { openModal, closeModal, switchModal, login, loginDemo, register, logout, _updateNav };
 })();
 
 /* ──────────────────────────────────────────────
