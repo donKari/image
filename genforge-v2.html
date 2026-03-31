@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GenForge — AI Image Studio</title>
+<meta name="description" content="Générez et partagez des images IA. Explorez la galerie communautaire GenForge."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --bg:      #070710;
+  --bg2:     #0d0d1a;
+  --bg3:     #111124;
+  --panel:   #12121f;
+  --border:  #1e1e38;
+  --border2: #2a2a4a;
+  --accent:  #00f5c8;
+  --accent2: #7c3aed;
+  --accent3: #f059ff;
+  --text:    #e8e8f0;
+  --text2:   #8888aa;
+  --text3:   #55557a;
+  --red:     #ff3b5c;
+  --green:   #22c55e;
+  --glow:    0 0 20px rgba(0,245,200,.15);
+  --glow2:   0 0 30px rgba(124,58,237,.2);
+  --font-title: 'Exo 2', sans-serif;
+  --font-ui:    'Rajdhani', sans-serif;
+  --font-mono:  'Share Tech Mono', monospace;
+  --r:  8px;
+  --r2: 12px;
+  --transition: 0.2s ease;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanlines */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 2px; }
+
+/* ============================================================
+   TYPOGRAPHY HELPERS
+   ============================================================ */
+.grad-text {
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.font-mono { font-family: var(--font-mono); }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 60px;
+  background: rgba(7,7,16,.88);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px;
+}
+
+main {
+  margin-top: 60px;
+  flex: 1;
+  padding: 30px 20px;
+  max-width: 1400px;
+  margin-left: auto; margin-right: auto;
+  width: 100%;
+}
+
+.page { display: none; animation: fadeUp .3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+.logo {
+  font-family: var(--font-title); font-weight: 800; font-size: 22px;
+  letter-spacing: 2px; cursor: pointer; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo span {
+  background: linear-gradient(135deg, var(--accent3), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.nav-tabs { display: flex; gap: 4px; flex: 1; justify-content: center; }
+
+.nav-tab {
+  padding: 6px 16px; border-radius: 6px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text2); font-family: var(--font-ui); font-weight: 600;
+  font-size: 14px; letter-spacing: .5px; cursor: pointer;
+  transition: all var(--transition);
+  display: flex; align-items: center; gap: 7px;
+}
+.nav-tab:hover { color: var(--text); background: var(--bg3); }
+.nav-tab.active {
+  color: var(--accent); background: rgba(0,245,200,.08);
+  border-color: rgba(0,245,200,.2);
+}
+.nav-tab svg { width: 15px; height: 15px; }
+
+.nav-right { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid var(--accent2); cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+  box-shadow: 0 0 12px rgba(124,58,237,.4);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  padding: 7px 18px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--bg3);
+  color: var(--text); font-family: var(--font-ui); font-weight: 600;
+  font-size: 14px; cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn:hover { background: var(--bg2); border-color: var(--text3); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent2), var(--accent3));
+  border-color: transparent; color: #fff;
+  box-shadow: 0 0 20px rgba(124,58,237,.3);
+}
+.btn-primary:hover { box-shadow: 0 0 30px rgba(124,58,237,.5); transform: translateY(-1px); }
+
+.btn-accent {
+  background: rgba(0,245,200,.1); border-color: rgba(0,245,200,.3); color: var(--accent);
+}
+.btn-accent:hover { background: rgba(0,245,200,.18); }
+
+.btn-ghost {
+  background: transparent; border-color: transparent;
+  color: var(--text2); padding: 6px 10px;
+}
+.btn-ghost:hover { color: var(--accent); background: rgba(0,245,200,.06); }
+
+.btn-sm { padding: 5px 12px; font-size: 13px; }
+
+.btn:disabled, .btn.loading { opacity: .6; cursor: not-allowed; pointer-events: none; }
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+textarea, input[type="text"], input[type="email"], input[type="password"] {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 11px 14px; color: var(--text);
+  font-family: var(--font-ui); font-size: 15px; outline: none;
+  transition: border-color var(--transition);
+}
+textarea { resize: vertical; min-height: 100px; line-height: 1.6; padding: 14px 16px; }
+textarea:focus, input:focus {
+  border-color: rgba(0,245,200,.4);
+  box-shadow: 0 0 0 3px rgba(0,245,200,.06);
+}
+textarea::placeholder, input::placeholder { color: var(--text3); }
+
+select {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 8px 12px; color: var(--text);
+  font-family: var(--font-mono); font-size: 13px; outline: none; cursor: pointer;
+  margin-bottom: 10px; transition: border-color var(--transition);
+}
+select:focus { border-color: rgba(0,245,200,.4); }
+
+input[type="range"] {
+  width: 120px; -webkit-appearance: none;
+  height: 3px; background: var(--border2); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 8px rgba(0,245,200,.5); cursor: pointer;
+}
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-family: var(--font-mono); font-size: 11px;
+  color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px;
+}
+
+/* ============================================================
+   CARDS & PANELS
+   ============================================================ */
+.panel-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 18px; position: relative; overflow: hidden;
+}
+
+.panel-title {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
+}
+
+.accentline::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent3), var(--accent));
+}
+
+.accentline-pink::before {
+  background: linear-gradient(90deg, var(--accent3), var(--accent2));
+}
+
+/* ============================================================
+   GENERATE PAGE
+   ============================================================ */
+.generate-layout {
+  display: grid; grid-template-columns: 1fr 380px;
+  gap: 24px; min-height: calc(100vh - 120px);
+}
+.generate-main { display: flex; flex-direction: column; gap: 20px; }
+
+.prompt-box {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 20px; position: relative; overflow: hidden;
+}
+.prompt-box::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent3), var(--accent));
+}
+
+.prompt-label {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.prompt-label::before { content: '>'; color: var(--accent3); }
+
+/* Prompt toolbar — new buttons + existing tags */
+.prompt-toolbar {
+  display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+}
+
+.prompt-tags {
+  display: flex; gap: 6px; flex-wrap: wrap; flex: 1;
+  margin-top: 12px;
+}
+.tag {
+  padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2); font-size: 12px;
+  font-family: var(--font-mono); cursor: pointer; transition: all .15s;
+}
+.tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,245,200,.05); }
+
+.prompt-actions {
+  display: flex; gap: 10px; margin-top: 14px; align-items: center; flex-wrap: wrap;
+}
+
+.generate-btn {
+  padding: 12px 32px; border-radius: var(--r);
+  background: linear-gradient(135deg, #00f5c8, #00b8d4);
+  border: none; color: #070710; font-family: var(--font-title);
+  font-weight: 800; font-size: 16px; letter-spacing: 1px; cursor: pointer;
+  transition: all var(--transition); display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0; box-shadow: 0 0 30px rgba(0,245,200,.3);
+}
+.generate-btn:hover { box-shadow: 0 0 50px rgba(0,245,200,.5); transform: translateY(-2px); }
+.generate-btn:active { transform: translateY(0); }
+.generate-btn.loading { opacity: .7; cursor: not-allowed; }
+.generate-btn svg { width: 18px; height: 18px; }
+
+/* Canvas */
+.canvas-area {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); overflow: hidden; position: relative;
+  min-height: 480px; display: flex; align-items: center; justify-content: center;
+}
+.canvas-placeholder {
+  display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--text3);
+}
+.canvas-placeholder svg { width: 64px; height: 64px; opacity: .3; }
+.canvas-placeholder p { font-size: 14px; font-family: var(--font-mono); }
+.canvas-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.canvas-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(7,7,16,.95), transparent);
+  padding: 20px; display: flex; gap: 10px; flex-wrap: wrap;
+  opacity: 0; transition: opacity .2s;
+}
+.canvas-area:hover .canvas-overlay { opacity: 1; }
+
+.loading-ring {
+  width: 60px; height: 60px; border: 3px solid var(--border2);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-line, .skeleton-img {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite; border-radius: 4px;
+}
+.skeleton-img { aspect-ratio: 1; width: 100%; border-radius: 0; }
+.skeleton-card .card-info { padding: 12px 14px; }
+
+/* Side panel */
+.side-panel { display: flex; flex-direction: column; gap: 16px; }
+
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.setting-row:last-child { margin-bottom: 0; }
+.setting-label { font-size: 13px; color: var(--text2); font-family: var(--font-mono); }
+.setting-value { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 32px; text-align: right; }
+
+.style-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.style-btn {
+  padding: 8px 4px; text-align: center; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--bg3);
+  color: var(--text2); font-size: 12px; font-family: var(--font-mono);
+  cursor: pointer; transition: all .15s;
+}
+.style-btn:hover, .style-btn.active {
+  border-color: var(--accent2); color: var(--text); background: rgba(124,58,237,.15);
+}
+
+.recent-thumb {
+  aspect-ratio: 1; border-radius: 6px; overflow: hidden;
+  cursor: pointer; border: 1px solid var(--border); transition: all .2s;
+}
+.recent-thumb:hover { border-color: var(--accent); transform: scale(1.04); }
+.recent-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ============================================================
+   GALLERY PAGE
+   ============================================================ */
+.gallery-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+}
+
+.page-title { font-family: var(--font-title); font-weight: 800; font-size: 28px; letter-spacing: 1px; }
+.page-title span { color: var(--accent); }
+
+.filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.filter-pill {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2); font-size: 13px;
+  cursor: pointer; transition: all .15s; font-family: var(--font-ui); font-weight: 600;
+}
+.filter-pill:hover { color: var(--text); border-color: var(--text3); }
+.filter-pill.active {
+  background: rgba(0,245,200,.1); border-color: rgba(0,245,200,.3); color: var(--accent);
+}
+
+.search-input {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 6px 16px 6px 36px; color: var(--text);
+  font-family: var(--font-ui); font-size: 14px; outline: none; width: 200px;
+  transition: all .2s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2355557a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-size: 16px; background-position: 12px center;
+}
+.search-input:focus { border-color: rgba(0,245,200,.3); width: 240px; }
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+  gap: 16px;
+}
+
+/* Image Card */
+.image-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); overflow: hidden; cursor: pointer;
+  transition: all .25s; position: relative;
+}
+.image-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.5), 0 0 0 1px var(--border2);
+}
+.image-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.card-img-wrap { aspect-ratio: 1; overflow: hidden; position: relative; background: var(--bg2); }
+.card-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; display: block; }
+.image-card:hover .card-img-wrap img { transform: scale(1.05); }
+
+.card-hover-overlay {
+  position: absolute; inset: 0; background: rgba(7,7,16,.7);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  opacity: 0; transition: opacity .2s;
+}
+.image-card:hover .card-hover-overlay { opacity: 1; }
+
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(13,13,26,.9); border: 1px solid var(--border2); color: var(--text);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s; backdrop-filter: blur(10px);
+}
+.icon-btn:hover { background: rgba(0,245,200,.15); border-color: var(--accent); color: var(--accent); }
+.icon-btn svg { width: 16px; height: 16px; }
+
+.card-info { padding: 12px 14px; }
+.card-prompt {
+  font-size: 13px; color: var(--text2); font-family: var(--font-mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px;
+}
+.card-meta { display: flex; align-items: center; justify-content: space-between; }
+.card-author { display: flex; align-items: center; gap: 7px; color: var(--text2); font-size: 13px; }
+
+.mini-avatar {
+  width: 22px; height: 22px; border-radius: 50%; font-size: 10px;
+  font-weight: 700; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: #fff;
+}
+
+.card-stats { display: flex; align-items: center; gap: 12px; }
+
+.stat-btn {
+  display: flex; align-items: center; gap: 4px; cursor: pointer;
+  transition: color .15s; border: none; background: none; color: var(--text3);
+  font-family: var(--font-ui); font-size: 13px; padding: 0;
+}
+.stat-btn:hover, .stat-btn.liked { color: var(--red); }
+.stat-btn svg { width: 14px; height: 14px; }
+
+/* ============================================================
+   FORGE PAGE
+   ============================================================ */
+.generator-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.builder-panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 24px; position: relative; overflow: hidden;
+}
+.builder-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent3), var(--accent2));
+}
+
+.section-title {
+  font-family: var(--font-title); font-weight: 600; font-size: 18px;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text);
+}
+.section-title svg { width: 20px; height: 20px; color: var(--accent3); }
+
+.variable-row {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px; margin-bottom: 10px; transition: border-color .2s;
+}
+.variable-row:hover { border-color: var(--border2); }
+
+.var-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.var-name {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+  background: rgba(0,245,200,.1); border: 1px solid rgba(0,245,200,.2);
+  border-radius: 4px; padding: 4px 8px; flex: 1; outline: none;
+}
+.var-name:focus { border-color: rgba(0,245,200,.5); }
+.var-values {
+  font-family: var(--font-mono); font-size: 12px; background: transparent;
+  border: none; border-top: 1px solid var(--border); width: 100%;
+  padding: 8px 0 0; color: var(--text2); outline: none; resize: none; min-height: 50px;
+}
+
+.template-input {
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r);
+  padding: 14px; color: var(--text); font-family: var(--font-mono); font-size: 14px;
+  width: 100%; outline: none; margin-bottom: 14px; line-height: 1.6;
+}
+.template-input:focus { border-color: rgba(240,89,255,.4); }
+
+.generated-prompts { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.gen-prompt-item {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px 14px; font-family: var(--font-mono); font-size: 13px;
+  color: var(--text2); display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; transition: all .15s; cursor: pointer;
+}
+.gen-prompt-item:hover { border-color: var(--accent2); color: var(--text); background: rgba(124,58,237,.08); }
+
+/* ============================================================
+   PROFILE PAGE
+   ============================================================ */
+.profile-header {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--r2);
+  padding: 30px; display: flex; gap: 24px; align-items: flex-start;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.profile-header::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px;
+  background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(240,89,255,.1));
+  pointer-events: none;
+}
+.profile-avatar-big {
+  width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-title); font-weight: 800; font-size: 28px; color: #fff;
+  flex-shrink: 0; box-shadow: 0 0 30px rgba(124,58,237,.4);
+}
+.profile-info { flex: 1; }
+.profile-name { font-family: var(--font-title); font-weight: 800; font-size: 26px; margin-bottom: 4px; }
+.profile-handle { font-family: var(--font-mono); font-size: 13px; color: var(--accent); margin-bottom: 12px; }
+.profile-stats { display: flex; gap: 24px; }
+.pstat { text-align: center; }
+.pstat-num { font-family: var(--font-title); font-weight: 800; font-size: 20px; }
+.pstat-label { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+
+.profile-tabs {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  border-bottom: 1px solid var(--border); padding-bottom: 0;
+}
+.ptab {
+  padding: 10px 20px; border: none; background: transparent; color: var(--text2);
+  font-family: var(--font-ui); font-weight: 600; font-size: 14px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s;
+}
+.ptab:hover { color: var(--text); }
+.ptab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ============================================================
+   AUTH MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(7,7,16,.88); backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 16px;
+  padding: 32px; width: 100%; max-width: 400px; position: relative;
+  box-shadow: 0 0 60px rgba(124,58,237,.2), 0 30px 60px rgba(0,0,0,.5);
+  transform: translateY(20px); transition: transform .3s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-family: var(--font-title); font-weight: 800; font-size: 24px; text-align: center; margin-bottom: 6px; }
+.modal-sub { text-align: center; color: var(--text2); font-size: 14px; margin-bottom: 28px; }
+.modal-close {
+  position: absolute; top: 16px; right: 16px; width: 30px; height: 30px;
+  border-radius: 50%; border: 1px solid var(--border2); background: var(--bg3);
+  color: var(--text2); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 16px; transition: all .15s;
+}
+.modal-close:hover { color: var(--text); border-color: var(--text3); }
+.modal-switch { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text2); }
+.modal-switch a { color: var(--accent); cursor: pointer; }
+.modal-switch a:hover { text-decoration: underline; }
+.divider {
+  display: flex; align-items: center; gap: 12px; margin: 20px 0;
+  color: var(--text3); font-size: 12px; font-family: var(--font-mono);
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ============================================================
+   IMAGE DETAIL MODAL
+   ============================================================ */
+.img-modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.92); backdrop-filter: blur(20px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.img-modal-overlay.open { opacity: 1; pointer-events: all; }
+.img-modal {
+  display: grid; grid-template-columns: 1fr 360px; gap: 24px;
+  width: 100%; max-width: 1100px; max-height: 90vh;
+  transform: scale(.95); transition: transform .25s;
+}
+.img-modal-overlay.open .img-modal { transform: scale(1); }
+
+.img-modal-left {
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden;
+}
+.img-modal-left img { flex: 1; width: 100%; object-fit: contain; min-height: 0; }
+.img-modal-actions {
+  padding: 16px; display: flex; gap: 8px; flex-wrap: wrap;
+  border-top: 1px solid var(--border); background: var(--bg2);
+}
+
+.img-modal-right {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r2); display: flex; flex-direction: column; overflow: hidden;
+}
+.img-modal-info { padding: 20px; border-bottom: 1px solid var(--border); }
+.img-modal-author { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.img-modal-author-name { font-weight: 600; }
+.img-modal-author-time { font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
+.img-modal-prompt {
+  background: var(--bg2); border-radius: var(--r); padding: 12px;
+  font-family: var(--font-mono); font-size: 13px; color: var(--text2);
+  line-height: 1.6; margin-bottom: 14px;
+}
+.img-modal-stats { display: flex; gap: 16px; }
+
+/* Comments */
+.comments-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.comments-header {
+  padding: 14px 20px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--text3); letter-spacing: 2px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.comments-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.comments-empty { text-align: center; padding: 20px; color: var(--text3); font-family: var(--font-mono); font-size: 12px; }
+.comment { display: flex; gap: 8px; }
+.comment-body { background: var(--bg2); border-radius: 8px; padding: 10px 12px; flex: 1; }
+.comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.comment-user { font-weight: 600; font-size: 13px; }
+.comment-time { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+.comment-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.comment-input-bar { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.comment-input {
+  flex: 1; background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 8px 14px; color: var(--text);
+  font-family: var(--font-ui); font-size: 13px; outline: none;
+}
+.comment-input:focus { border-color: rgba(0,245,200,.3); }
+/* Char counter */
+.comment-counter { font-family: var(--font-mono); font-size: 11px; color: var(--text3); align-self: center; flex-shrink: 0; }
+.comment-counter.warn { color: var(--red); }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 10px;
+  padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: slideIn .3s ease; min-width: 240px;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.toast-icon { font-size: 18px; }
+.toast.success { border-left: 3px solid var(--accent); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--accent2); }
+
+/* ============================================================
+   MISC COMPONENTS
+   ============================================================ */
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 8px; border-radius: 10px; font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600; letter-spacing: .5px;
+}
+.badge-accent { background: rgba(0,245,200,.12); color: var(--accent); border: 1px solid rgba(0,245,200,.2); }
+.badge-purple { background: rgba(124,58,237,.15); color: #a78bfa; border: 1px solid rgba(124,58,237,.25); }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 60px 20px; color: var(--text3); text-align: center;
+}
+.empty-state svg { width: 56px; height: 56px; opacity: .3; }
+.empty-state h3 { font-family: var(--font-title); font-size: 20px; color: var(--text2); }
+.empty-state p  { font-size: 14px; max-width: 280px; }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+/* Avatar colours */
+.c1 { background: linear-gradient(135deg,#7c3aed,#a855f7); }
+.c2 { background: linear-gradient(135deg,#0891b2,#06b6d4); }
+.c3 { background: linear-gradient(135deg,#dc2626,#f59e0b); }
+.c4 { background: linear-gradient(135deg,#16a34a,#4ade80); }
+.c5 { background: linear-gradient(135deg,#f059ff,#7c3aed); }
+.c6 { background: linear-gradient(135deg,#ff6b35,#f59e0b); }
+
+/* Particles */
+.particles { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.particle {
+  position: absolute; width: 2px; height: 2px; background: var(--accent);
+  border-radius: 50%; opacity: 0; animation: float var(--d,8s) var(--del,0s) infinite;
+}
+@keyframes float {
+  0%  { transform: translateY(100vh) translateX(0); opacity: 0; }
+  10% { opacity: .4; }
+  90% { opacity: .2; }
+  100%{ transform: translateY(-10vh) translateX(var(--tx,20px)); opacity: 0; }
+}
+
+/* ============================================================
+   MOBILE NAV
+   ============================================================ */
+.mobile-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(7,7,16,.95); border-top: 1px solid var(--border);
+  padding: 8px 0; backdrop-filter: blur(20px);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .generate-layout    { grid-template-columns: 1fr; }
+  .generator-layout   { grid-template-columns: 1fr; }
+  .img-modal          { grid-template-columns: 1fr; max-height: unset; }
+  .img-modal-right    { max-height: 40vh; }
+  .nav-tabs           { display: none; }
+  .mobile-nav         { display: flex; justify-content: space-around; }
+  main                { padding: 20px 12px 80px; }
+}
+@media (max-width: 600px) {
+  .image-grid        { grid-template-columns: repeat(2,1fr); }
+  .profile-header    { flex-direction: column; }
+  .profile-stats     { gap: 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles" aria-hidden="true"></div>
+
+<!-- ============================================================
+     NAVIGATION
+     ============================================================ -->
+<nav role="navigation" aria-label="Navigation principale">
+  <div class="logo" onclick="App.navigate('generate')" role="link" tabindex="0"
+       aria-label="GenForge — Accueil">GEN<span>FORGE</span></div>
+
+  <div class="nav-tabs" role="tablist">
+    <button class="nav-tab active" role="tab" aria-selected="true"  id="tab-generate" onclick="App.navigate('generate')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Générer
+    </button>
+    <button class="nav-tab" role="tab" aria-selected="false" id="tab-gallery" onclick="App.navigate('gallery')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Galerie
+    </button>
+    <button class="nav-tab" role="tab" aria-selected="false" id="tab-forge" onclick="App.navigate('forge')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Forge
+    </button>
+    <button class="nav-tab" role="tab" aria-selected="false" id="tab-profile" onclick="App.navigate('profile')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profil
+    </button>
+  </div>
+
+  <div class="nav-right" id="navRight" aria-label="Compte utilisateur"></div>
+</nav>
+
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main id="mainContent">
+
+  <!-- ── GENERATE PAGE ──────────────────────────────── -->
+  <section class="page active" id="page-generate" aria-label="Générer une image">
+    <div class="generate-layout">
+
+      <div class="generate-main">
+        <div style="padding:0 0 16px;">
+          <div style="font-family:var(--font-title);font-weight:800;font-size:clamp(26px,4vw,44px);line-height:1.1;margin-bottom:12px;">
+            Crée l'<span class="grad-text">extraordinaire</span>
+          </div>
+          <div style="color:var(--text2);font-size:15px;">Décris ta vision — GenForge la forge.</div>
+        </div>
+
+        <div class="prompt-box" role="group" aria-label="Zone de prompt">
+          <div class="prompt-label" aria-hidden="true">Prompt</div>
+
+          <!-- NEW: Quick action toolbar -->
+          <div class="prompt-toolbar">
+            <button class="btn btn-ghost btn-sm" onclick="Generate.random()" title="Prompt aléatoire" aria-label="Prompt aléatoire">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 17H4a2 2 0 01-2-2V5a2 2 0 012-2h16a2 2 0 012 2v10"/><path d="M13 15l4 4 4-4M17 19V11"/></svg>
+              Aléatoire
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="Generate.enhance()" title="Améliorer le prompt" aria-label="Améliorer le prompt">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Améliorer
+            </button>
+          </div>
+
+          <textarea id="promptInput" rows="3"
+            placeholder="Un guerrier cyberpunk dans une ville néon sous la pluie, style anime, lumières violettes, ultra détaillé..."
+            aria-label="Entrez votre prompt ici"></textarea>
+
+          <div class="prompt-tags" role="group" aria-label="Tags rapides">
+            <span class="tag" onclick="Generate.addTag('cinematic')" role="button" tabindex="0">cinematic</span>
+            <span class="tag" onclick="Generate.addTag('8k ultra detailed')" role="button" tabindex="0">8k</span>
+            <span class="tag" onclick="Generate.addTag('neon lights')" role="button" tabindex="0">neon</span>
+            <span class="tag" onclick="Generate.addTag('anime style')" role="button" tabindex="0">anime</span>
+            <span class="tag" onclick="Generate.addTag('photorealistic')" role="button" tabindex="0">réaliste</span>
+            <span class="tag" onclick="Generate.addTag('dark fantasy')" role="button" tabindex="0">dark fantasy</span>
+            <span class="tag" onclick="Generate.addTag('cyberpunk')" role="button" tabindex="0">cyberpunk</span>
+          </div>
+
+          <div class="prompt-actions">
+            <div style="flex:1;"></div>
+            <button class="generate-btn" id="generateBtn" onclick="Generate.trigger()" aria-label="Générer l'image">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              GÉNÉRER
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas area -->
+        <div class="canvas-area" id="canvasArea" role="img" aria-label="Image générée">
+          <div class="canvas-placeholder" id="canvasPlaceholder">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <p>// votre image apparaîtra ici</p>
+          </div>
+          <div id="loadingState" style="display:none;flex-direction:column;align-items:center;gap:16px;" role="status" aria-live="polite">
+            <div class="loading-ring" aria-hidden="true"></div>
+            <span style="font-family:var(--font-mono);font-size:13px;color:var(--text3);" id="loadingText">Initialisation...</span>
+          </div>
+          <img id="generatedImg" class="canvas-img" style="display:none;" alt="Image générée"/>
+          <div class="canvas-overlay" id="canvasActions" aria-label="Actions image">
+            <button class="btn btn-sm btn-accent" onclick="Generate.download()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Télécharger
+            </button>
+            <button class="btn btn-sm" onclick="Generate.save()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Sauvegarder
+            </button>
+            <button class="btn btn-sm" onclick="Generate.remix()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+              Remix
+            </button>
+            <button class="btn btn-sm" onclick="Generate.share()">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Partager
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side panel -->
+      <aside class="side-panel" aria-label="Paramètres de génération">
+        <div class="panel-card accentline">
+          <div class="panel-title">// Paramètres</div>
+          <div style="margin-bottom:14px;">
+            <div class="setting-row"><span class="setting-label">Modèle</span></div>
+            <select onchange="Generate.setModel(this.value)" aria-label="Choisir le modèle">
+              <option>FLUX.1 Pro</option>
+              <option>SDXL Lightning</option>
+              <option>Stable Diffusion 3</option>
+              <option>Midjourney v6 (sim)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Steps</span>
+            <input type="range" min="10" max="50" value="28" aria-label="Nombre de steps"
+              oninput="this.nextElementSibling.textContent=this.value"/>
+            <span class="setting-value">28</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">CFG Scale</span>
+            <input type="range" min="1" max="20" value="7" step="0.5" aria-label="CFG Scale"
+              oninput="this.nextElementSibling.textContent=this.value"/>
+            <span class="setting-value">7</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Taille</span>
+            <span class="setting-value" style="color:var(--text2);">1024×1024</span>
+          </div>
+          <hr/>
+          <div class="panel-title" style="margin-bottom:10px;">// Style</div>
+          <div class="style-grid" role="group" aria-label="Style d'image">
+            <div class="style-btn active" onclick="Generate.setStyle(this)" role="button" tabindex="0">Aucun</div>
+            <div class="style-btn" onclick="Generate.setStyle(this)" role="button" tabindex="0">Anime</div>
+            <div class="style-btn" onclick="Generate.setStyle(this)" role="button" tabindex="0">Réaliste</div>
+            <div class="style-btn" onclick="Generate.setStyle(this)" role="button" tabindex="0">Fantasy</div>
+            <div class="style-btn" onclick="Generate.setStyle(this)" role="button" tabindex="0">Cyber</div>
+            <div class="style-btn" onclick="Generate.setStyle(this)" role="button" tabindex="0">Sketch</div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-title">// Mes récentes</div>
+          <div id="recentImages" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
+          <div id="recentEmpty" style="text-align:center;padding:20px 0;color:var(--text3);font-family:var(--font-mono);font-size:12px;">
+            Aucune image encore
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── GALLERY PAGE ──────────────────────────────── -->
+  <section class="page" id="page-gallery" aria-label="Galerie publique">
+    <div class="gallery-header">
+      <div>
+        <div class="page-title">Galerie <span>Publique</span></div>
+        <div style="color:var(--text2);font-size:14px;margin-top:4px;">Explorez les créations de la communauté</div>
+      </div>
+      <div class="filter-bar" role="group" aria-label="Filtres galerie">
+        <input class="search-input" id="gallerySearch" type="search" placeholder="Rechercher..."
+          aria-label="Rechercher dans la galerie"/>
+        <button class="filter-pill active" onclick="Gallery.setFilter('all',this)">Tous</button>
+        <button class="filter-pill" onclick="Gallery.setFilter('popular',this)">🔥 Populaires</button>
+        <button class="filter-pill" onclick="Gallery.setFilter('recent',this)">⚡ Récents</button>
+      </div>
+    </div>
+    <div class="image-grid" id="galleryGrid" role="list" aria-label="Images de la galerie"></div>
+  </section>
+
+  <!-- ── FORGE PAGE ──────────────────────────────── -->
+  <section class="page" id="page-forge" aria-label="Créateur de générateur">
+    <div class="gallery-header">
+      <div>
+        <div class="page-title">Prompt <span>Forge</span></div>
+        <div style="color:var(--text2);font-size:14px;margin-top:4px;">Créez des générateurs de prompts dynamiques</div>
+      </div>
+      <button class="btn btn-primary" onclick="Forge.save()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
+        Sauvegarder générateur
+      </button>
+    </div>
+    <div class="generator-layout">
+      <div class="builder-panel">
+        <div class="section-title">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          Template de prompt
+        </div>
+        <label class="form-label" for="templateInput">Template (utilisez {variable})</label>
+        <input type="text" id="templateInput"
+          value="Un {personnage} dans un {décor} style {style}, {éclairage}, {qualité}"
+          oninput="Forge.updatePreview()" class="template-input" aria-label="Template du prompt"/>
+
+        <div class="form-label" style="margin-bottom:12px;">Variables</div>
+        <div id="variablesList" aria-label="Liste des variables"></div>
+
+        <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:4px;" onclick="Forge.addVariable()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter une variable
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div class="builder-panel">
+          <div class="section-title">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Prompts générés
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="Forge.generatePrompts()">
+              Générer 5 prompts
+            </button>
+            <button class="btn btn-accent btn-sm" onclick="Forge.generateAndUse()" title="Générer et utiliser le premier" aria-label="Générer et utiliser">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="5 12 10 17 20 7"/></svg>
+            </button>
+          </div>
+          <div class="generated-prompts" id="generatedPrompts" role="list" aria-label="Prompts générés">
+            <div class="comments-empty">Cliquez sur "Générer" pour créer des combinaisons</div>
+          </div>
+        </div>
+
+        <div class="builder-panel">
+          <div class="section-title">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Générateurs publics
+          </div>
+          <div id="publicGenerators" aria-label="Générateurs de la communauté"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PROFILE PAGE ──────────────────────────────── -->
+  <section class="page" id="page-profile" aria-label="Profil utilisateur">
+    <div id="profileLoggedOut">
+      <div class="empty-state">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <h3>Connectez-vous pour voir votre profil</h3>
+        <p>Créez un compte gratuit pour sauvegarder vos créations et interagir avec la communauté.</p>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-primary" onclick="Auth.openModal('register')">Créer un compte</button>
+          <button class="btn" onclick="Auth.openModal('login')">Se connecter</button>
+        </div>
+      </div>
+    </div>
+    <div id="profileLoggedIn" style="display:none;">
+      <div class="profile-header">
+        <div class="profile-avatar-big" id="profileAvatarBig" aria-hidden="true">U</div>
+        <div class="profile-info">
+          <div class="profile-name" id="profileName">Utilisateur</div>
+          <div class="profile-handle" id="profileHandle">@user</div>
+          <div class="profile-stats">
+            <div class="pstat"><div class="pstat-num" id="statCreations">0</div><div class="pstat-label">Créations</div></div>
+            <div class="pstat"><div class="pstat-num" id="statLikes">0</div><div class="pstat-label">Likes reçus</div></div>
+            <div class="pstat"><div class="pstat-num" id="statForges">0</div><div class="pstat-label">Forges</div></div>
+          </div>
+        </div>
+        <button class="btn btn-sm" onclick="Auth.logout()" style="margin-left:auto;" aria-label="Se déconnecter">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
+        </button>
+      </div>
+
+      <div class="profile-tabs" role="tablist">
+        <button class="ptab active" role="tab" aria-selected="true"  onclick="Profile.switchTab('creations',this)">Créations</button>
+        <button class="ptab" role="tab" aria-selected="false" onclick="Profile.switchTab('favorites',this)">Favoris</button>
+        <button class="ptab" role="tab" aria-selected="false" onclick="Profile.switchTab('generators',this)">Mes Forges</button>
+      </div>
+
+      <div id="profileCreations">
+        <div class="image-grid" id="userImagesGrid"></div>
+        <div id="userImagesEmpty" class="empty-state" style="display:none;">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <h3>Aucune création</h3>
+          <p>Générez votre première image pour la voir ici.</p>
+          <button class="btn btn-accent" onclick="App.navigate('generate')">Créer maintenant</button>
+        </div>
+      </div>
+      <div id="profileFavorites" style="display:none;">
+        <div class="image-grid" id="userFavGrid"></div>
+        <div id="userFavEmpty" class="empty-state">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <h3>Aucun favori</h3>
+          <p>Likez des images dans la galerie pour les retrouver ici.</p>
+        </div>
+      </div>
+      <div id="profileGenerators" style="display:none;">
+        <div id="savedGeneratorsGrid"></div>
+        <div id="savedGeneratorsEmpty" class="empty-state">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          <h3>Aucune forge sauvegardée</h3>
+          <p>Créez et sauvegardez des générateurs dans l'onglet Forge.</p>
+          <button class="btn btn-accent" onclick="App.navigate('forge')">Aller à la Forge</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav" aria-label="Navigation mobile">
+  <button class="nav-tab active" id="mtab-generate" onclick="App.navigate('generate')" style="flex-direction:column;gap:2px;padding:4px 12px;font-size:11px;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+    Générer
+  </button>
+  <button class="nav-tab" id="mtab-gallery" onclick="App.navigate('gallery')" style="flex-direction:column;gap:2px;padding:4px 12px;font-size:11px;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    Galerie
+  </button>
+  <button class="nav-tab" id="mtab-forge" onclick="App.navigate('forge')" style="flex-direction:column;gap:2px;padding:4px 12px;font-size:11px;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+    Forge
+  </button>
+  <button class="nav-tab" id="mtab-profile" onclick="App.navigate('profile')" style="flex-direction:column;gap:2px;padding:4px 12px;font-size:11px;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Profil
+  </button>
+</nav>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal" role="dialog" aria-modal="true" aria-label="Authentification">
+  <div class="modal">
+    <button class="modal-close" onclick="Auth.closeModal()" aria-label="Fermer">×</button>
+    <div id="loginForm">
+      <div class="modal-title">Bon retour 👋</div>
+      <div class="modal-sub">Connectez-vous à GenForge</div>
+      <div class="form-group">
+        <label class="form-label" for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="vous@exemple.com" autocomplete="email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="loginPass">Mot de passe</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;padding:12px;" onclick="Auth.login()">
+        Se connecter
+      </button>
+      <div class="divider">ou</div>
+      <button class="btn" style="width:100%;justify-content:center;" onclick="Auth.loginDemo()">
+        ⚡ Connexion démo rapide
+      </button>
+      <div class="modal-switch">
+        Pas de compte ? <a onclick="Auth.switchModal('register')" role="button" tabindex="0">Créez-en un</a>
+      </div>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="modal-title">Rejoindre GenForge</div>
+      <div class="modal-sub">Créez votre compte gratuitement</div>
+      <div class="form-group">
+        <label class="form-label" for="regName">Pseudo</label>
+        <input type="text" id="regName" placeholder="CyberArtist42" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="regEmail">Email</label>
+        <input type="email" id="regEmail" placeholder="vous@exemple.com" autocomplete="email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="regPass">Mot de passe</label>
+        <input type="password" id="regPass" placeholder="Min. 8 caractères" autocomplete="new-password"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;padding:12px;" onclick="Auth.register()">
+        Créer mon compte
+      </button>
+      <div class="modal-switch">
+        Déjà un compte ? <a onclick="Auth.switchModal('login')" role="button" tabindex="0">Connectez-vous</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE DETAIL MODAL -->
+<div class="img-modal-overlay" id="imgModal" role="dialog" aria-modal="true" aria-label="Détails de l'image">
+  <div class="img-modal">
+    <div class="img-modal-left">
+      <img id="imgModalImg" src="" alt="Image sélectionnée"/>
+      <div class="img-modal-actions">
+        <button class="btn btn-sm btn-accent" onclick="ImageModal.download()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger
+        </button>
+        <button class="btn btn-sm" onclick="ImageModal.remix()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
+          Remix
+        </button>
+        <button class="btn btn-sm" onclick="ImageModal.copyPrompt()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copier prompt
+        </button>
+        <button class="btn btn-sm" onclick="ImageModal.close()" style="margin-left:auto;" aria-label="Fermer">✕ Fermer</button>
+      </div>
+    </div>
+    <div class="img-modal-right">
+      <div class="img-modal-info">
+        <div class="img-modal-author">
+          <div class="mini-avatar" id="imgModalAvatar" style="width:36px;height:36px;font-size:14px;" aria-hidden="true"></div>
+          <div>
+            <div class="img-modal-author-name" id="imgModalAuthor"></div>
+            <div class="img-modal-author-time" id="imgModalTime"></div>
+          </div>
+        </div>
+        <div class="img-modal-prompt" id="imgModalPrompt" aria-label="Prompt de l'image"></div>
+        <div class="img-modal-stats">
+          <button class="stat-btn" id="imgModalLikeBtn" onclick="ImageModal.toggleLike()" aria-label="Liker cette image">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <span id="imgModalLikes">0</span>
+          </button>
+          <span style="color:var(--text3);font-size:13px;font-family:var(--font-mono);" id="imgModalModel"></span>
+        </div>
+      </div>
+      <div class="comments-section">
+        <div class="comments-header">// Commentaires (<span id="commentsCount">0</span>)</div>
+        <div class="comments-list" id="commentsList" role="log" aria-live="polite" aria-label="Commentaires"></div>
+        <div class="comment-input-bar">
+          <input class="comment-input" id="commentInput" type="text"
+            placeholder="Ajouter un commentaire..." maxlength="280"
+            aria-label="Votre commentaire"
+            oninput="Comments.updateCounter(this)"
+            onkeydown="if(event.key==='Enter')Comments.submit()"/>
+          <span class="comment-counter" id="commentCounter" aria-live="polite">280</span>
+          <button class="btn btn-accent btn-sm" onclick="Comments.submit()" aria-label="Envoyer le commentaire">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer" role="region" aria-label="Notifications"></div>
+
+<!-- ============================================================
+     JAVASCRIPT — Module-pattern architecture
+     Mirrors the multi-file structure in /js/:
+       lib/utils.js · lib/constants.js
+       services/store.js · services/imageService.js · services/authService.js
+       components/toast.js · components/imageCard.js · components/commentSection.js
+       pages/gallery.js · pages/generate.js
+     ============================================================ -->
+<script>
+'use strict';
+
+/* ──────────────────────────────────────────────
+   LIB / UTILS
+   Pure functions, no side effects.
+   ────────────────────────────────────────────── */
+const Utils = (() => {
+  const COLORS = ['c1','c2','c3','c4','c5','c6'];
+
+  function getAvatarColor(str) {
+    if (!str) return COLORS[0];
+    return COLORS[str.charCodeAt(0) % COLORS.length];
+  }
+
+  // Basic XSS prevention for innerHTML contexts
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function debounce(fn, ms = 300) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  }
+
+  function uid(prefix = 'id') {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+  }
+
+  function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard) return navigator.clipboard.writeText(text);
+    const el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    return Promise.resolve();
+  }
+
+  return { getAvatarColor, escapeHtml, debounce, uid, randomPick, isValidEmail, copyToClipboard };
+})();
+
+/* ──────────────────────────────────────────────
+   LIB / CONSTANTS
+   All magic strings and static data in one place.
+   ────────────────────────────────────────────── */
+const K = (() => {
+  const LOADING_MESSAGES = [
+    'Initialisation du modèle...', 'Analyse du prompt...', 'Génération des tokens...',
+    'Diffusion en cours...', 'Affinement des détails...', 'Post-traitement...', 'Finalisation...',
+  ];
+
+  const RANDOM_PROMPTS = [
+    'Guerrier cyberpunk sous la pluie néon, 8k ultra detailed, cinematic lighting',
+    'Dragonne de cristal dans une forêt enchantée magique, style fantasy, volumetric fog',
+    'Astronaute solitaire sur Mars au golden hour, photorealistic, cinematic',
+    'Géisha futuriste entourée de lumières holographiques, anime style, ultra detailed',
+    'Ville steampunk flottante au coucher de soleil, dramatic sky, concept art',
+    'Portrait alien bioluminescent, fond sombre, studio lighting, 4k',
+    'Forêt de bambou éthérée au lever du soleil, brume matinale, photorealistic',
+    'Robot victorien servant du thé dans un salon baroque, sepia tones',
+    'Mage des glaces invoquant un blizzard, epic fantasy, particle effects',
+    'Mer de nuages violets avec des îles flottantes, surrealistic, dreamlike',
+    'Chat samouraï en armure de jade, illustration japandi, ink painting style',
+    'Bibliothèque infinie interstellaire, sci-fi baroque, golden light shafts',
+  ];
+
+  // Appended to prompts by the "Améliorer" button
+  const IMPROVEMENT_SUFFIXES = [
+    ', masterpiece, ultra detailed, 8k resolution, cinematic lighting, award winning',
+    ', highly detailed, professional photography, dramatic composition, volumetric fog',
+    ', concept art, trending on artstation, octane render, hyperrealistic',
+    ', digital painting, sharp focus, intricate details, vivid colors, epic scale',
+  ];
+
+  const SAMPLE_GALLERY = [
+    { id:'g1', url:'https://picsum.photos/seed/art1/512/512', prompt:'Guerrier cyberpunk sous la pluie neon, 8k ultra detailed', author:'NeonByte',   authorColor:'c1', likes:142, time:'2h',  model:'FLUX.1 Pro', comments:[] },
+    { id:'g2', url:'https://picsum.photos/seed/art2/512/512', prompt:'Dragonne de cristal dans une forêt enchantée, fantasy style', author:'AstralCraft', authorColor:'c2', likes:89,  time:'4h',  model:'SDXL',      comments:[] },
+    { id:'g3', url:'https://picsum.photos/seed/art3/512/512', prompt:'Astronaute solitaire sur Mars, golden hour, cinematic', author:'VoidPainter', authorColor:'c3', likes:234, time:'6h',  model:'FLUX.1 Pro', comments:[] },
+    { id:'g4', url:'https://picsum.photos/seed/art4/512/512', prompt:'Géisha futuriste, lumières holographiques, anime style', author:'SakurAI',    authorColor:'c5', likes:178, time:'8h',  model:'SD3',       comments:[] },
+    { id:'g5', url:'https://picsum.photos/seed/art5/512/512', prompt:'Ville flottante au coucher de soleil, steampunk, volumetric fog', author:'CloudForge', authorColor:'c4', likes:95, time:'12h', model:'FLUX.1 Pro', comments:[] },
+    { id:'g6', url:'https://picsum.photos/seed/art6/512/512', prompt:'Portrait alien bioluminescent, fond sombre, studio lighting', author:'NeonByte', authorColor:'c1', likes:312, time:'1j', model:'Midjourney', comments:[] },
+    { id:'g7', url:'https://picsum.photos/seed/art7/512/512', prompt:'Forêt de bambou éthérée, brume matinale, photo réaliste', author:'ZenPixel', authorColor:'c6', likes:67, time:'1j', model:'SDXL', comments:[] },
+    { id:'g8', url:'https://picsum.photos/seed/art8/512/512', prompt:'Robot vintage servant du thé, ambiance victorienne', author:'SteamCog', authorColor:'c2', likes:123, time:'2j', model:'SD3', comments:[] },
+  ];
+
+  const PUBLIC_GENERATORS = [
+    { id:'pg1', name:'Hero Generator', template:'{race} {classe} portant {armure} avec {arme}, style {style}', vars:{race:['Elfe','Humain','Orc','Nain'],classe:['Guerrier','Mage','Voleur'],armure:['armure de dragon','cape magique'],arme:['épée légendaire','bâton runique'],style:['fantasy','dark fantasy']}, author:'AstralCraft', uses:450 },
+    { id:'pg2', name:'Landscape Pro', template:'{biome} au {moment}, {météo}, style {rendu}, {qualité}', vars:{biome:['désert','forêt','océan','montagne'],moment:['lever du soleil','coucher de soleil','nuit étoilée'],météo:['tempête','brume','clair'],rendu:['photorealistic','painting'],qualité:['8k','ultra detailed']}, author:'VoidPainter', uses:289 },
+  ];
+
+  const DEFAULT_FORGE_VARS = [
+    { name:'personnage', values:'guerrier cyberpunk\nmagicienne elfe\npirate de l\'espace\nrobot ancien\nsamouraï fantôme' },
+    { name:'décor',      values:'ville néon\nforêt enchantée\nstation spatiale\ntemple abandonné\narène sous-marine' },
+    { name:'style',      values:'anime\nphotoréaliste\npainting\nstudio ghibli\ndark fantasy' },
+    { name:'éclairage',  values:'lumière dorée\nnéons violets\nclair de lune\nlumière cinématique\ncontre-jour' },
+    { name:'qualité',    values:'8k ultra detailed\nhigh definition\ncinematic render\nstudio quality' },
+  ];
+
+  const SEED_COMMENTS = [
+    { imageId:'g1', comments:[
+      { user:'AstralCraft', text:'Incroyable ! La composition est parfaite.', time:'1h', color:'c2' },
+      { user:'ZenPixel',    text:'Le néon violet est magnifique. Quel prompt ?', time:'30m', color:'c6' },
+    ]},
+    { imageId:'g3', comments:[
+      { user:'SakurAI', text:'Cette ambiance solitaire est superbe...', time:'2h', color:'c5' },
+    ]},
+  ];
+
+  return {
+    LOADING_MESSAGES, RANDOM_PROMPTS, IMPROVEMENT_SUFFIXES,
+    SAMPLE_GALLERY, PUBLIC_GENERATORS, DEFAULT_FORGE_VARS, SEED_COMMENTS,
+    COMMENT_COOLDOWN_MS: 5000,
+    COMMENT_MAX_LENGTH:  280,
+    PASSWORD_MIN_LENGTH: 8,
+    MAX_RECENT:          6,
+    GALLERY_PAGE_SIZE:   8,
+  };
+})();
+
+/* ──────────────────────────────────────────────
+   SERVICES / STORE
+   Single source of truth. Pub/sub for reactivity.
+   ────────────────────────────────────────────── */
+const Store = (() => {
+  // Seed comments
+  const gallery = K.SAMPLE_GALLERY.map(img => ({ ...img, comments: [...img.comments] }));
+  K.SEED_COMMENTS.forEach(({ imageId, comments }) => {
+    const img = gallery.find(i => i.id === imageId);
+    if (img) img.comments = comments;
+  });
+
+  const _state = {
+    user:            null,
+    currentPage:     'generate',
+    currentImg:      null,
+    galleryFilter:   'all',
+    gallerySearch:   '',
+    galleryPage:     1,
+    profileTab:      'creations',
+    generatorVars:   [],
+    galleryData:     gallery,
+    likedIds:        new Set(),
+    savedImages:     [],
+    savedGenerators: [],
+    isGenerating:    false,
+    lastCommentTime: 0,
+  };
+
+  const _subs = {};
+
+  function subscribe(key, fn) {
+    if (!_subs[key]) _subs[key] = [];
+    _subs[key].push(fn);
+    return () => { _subs[key] = _subs[key].filter(f => f !== fn); };
+  }
+
+  function _notify(key) { (_subs[key] || []).forEach(fn => fn(_state[key])); }
+
+  function get(key)       { return _state[key]; }
+  function set(key, val)  { _state[key] = val; _notify(key); }
+  function update(key, fn){ set(key, fn(_state[key])); }
+
+  return { get, set, update, subscribe };
+})();
+
+/* ──────────────────────────────────────────────
+   SERVICES / IMAGE SERVICE
+   Generation logic separated from UI.
+   ────────────────────────────────────────────── */
+const ImageService = (() => {
+  /**
+   * Simulates image generation.
+   * Swap the setTimeout body for a real fetch() to plug into any API.
+   */
+  function generate(prompt, settings, onProgress) {
+    return new Promise(resolve => {
+      let i = 0;
+      const interval = setInterval(() => {
+        onProgress(K.LOADING_MESSAGES[i++ % K.LOADING_MESSAGES.length]);
+      }, 600);
+
+      const seed  = Math.floor(Math.random() * 99999);
+      const delay = 2600 + Math.random() * 1400;
+
+      setTimeout(() => {
+        clearInterval(interval);
+        resolve({
+          id:     Utils.uid('img'),
+          url:    `https://picsum.photos/seed/${seed}/1024/1024`,
+          prompt,
+          model:  settings.model || 'FLUX.1 Pro',
+          seed,
+          time:   'à l\'instant',
+        });
+      }, delay);
+    });
+  }
+
+  function getRandomPrompt() { return Utils.randomPick(K.RANDOM_PROMPTS); }
+
+  function improvePrompt(prompt) {
+    if (!prompt.trim()) return prompt;
+    const suffix = Utils.randomPick(K.IMPROVEMENT_SUFFIXES);
+    return prompt.trimEnd().replace(/,\s*$/, '') + suffix;
+  }
+
+  return { generate, getRandomPrompt, improvePrompt };
+})();
+
+/* ──────────────────────────────────────────────
+   SERVICES / AUTH SERVICE
+   Validation logic separated from DOM.
+   ────────────────────────────────────────────── */
+const AuthService = (() => {
+  function login(email, password) {
+    if (!email || !password) return { ok:false, error:'Remplissez tous les champs.' };
+    if (!Utils.isValidEmail(email)) return { ok:false, error:'Email invalide.' };
+    return { ok:true, user:{ name: Utils.escapeHtml(email.split('@')[0]), email } };
+  }
+
+  function register(name, email, password) {
+    if (!name || !email || !password) return { ok:false, error:'Remplissez tous les champs.' };
+    if (name.trim().length < 2)       return { ok:false, error:'Pseudo trop court (min. 2 caractères).' };
+    if (!Utils.isValidEmail(email))    return { ok:false, error:'Email invalide.' };
+    if (password.length < K.PASSWORD_MIN_LENGTH) return { ok:false, error:`Mot de passe trop court (min. ${K.PASSWORD_MIN_LENGTH} caractères).` };
+    return { ok:true, user:{ name: Utils.escapeHtml(name.trim()), email } };
+  }
+
+  function demoLogin() {
+    return { ok:true, user:{ name:'DemoUser', email:'demo@genforge.ai' } };
+  }
+
+  return { login, register, demoLogin };
+})();
+
+/* ──────────────────────────────────────────────
+   COMPONENTS / TOAST
+   Notification system.
+   ────────────────────────────────────────────── */
+const Toast = (() => {
+  const container = () => document.getElementById('toastContainer');
+
+  function show(msg, type = 'success', duration = 3000) {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.setAttribute('role', 'alert');
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icon}</span><span>${msg}</span>`;
+    container().appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'slideIn .3s ease reverse';
+      setTimeout(() => el.remove(), 280);
+    }, duration);
+  }
+
+  return { show };
+})();
+
+/* ──────────────────────────────────────────────
+   COMPONENTS / IMAGE CARD
+   Single source of truth for card HTML.
+   Eliminates the 3 near-identical templates that existed before.
+   ────────────────────────────────────────────── */
+const ImageCard = (() => {
+  function render(img, { isLiked = false, showActions = true } = {}) {
+    const p  = Utils.escapeHtml(img.prompt);
+    const a  = Utils.escapeHtml(img.author);
+    const lc = isLiked ? 'liked' : '';
+    const lf = isLiked ? 'currentColor' : 'none';
+
+    const overlay = showActions ? `
+      <div class="card-hover-overlay" aria-hidden="true">
+        <button class="icon-btn" data-action="copy-prompt" data-id="${img.id}" title="Copier le prompt">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+        <button class="icon-btn" data-action="remix" data-id="${img.id}" title="Remix">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
+        </button>
+      </div>` : '';
+
+    return `
+      <article class="image-card" data-action="open-modal" data-id="${img.id}"
+               tabindex="0" role="button" aria-label="Voir l'image : ${p}">
+        <div class="card-img-wrap">
+          <img src="${img.url}" loading="lazy" alt="${p}" decoding="async"/>
+          ${overlay}
+        </div>
+        <div class="card-info">
+          <p class="card-prompt" title="${p}">${p}</p>
+          <div class="card-meta">
+            <div class="card-author">
+              <div class="mini-avatar ${img.authorColor}" aria-hidden="true">${a[0].toUpperCase()}</div>
+              <span>${a}</span>
+            </div>
+            <div class="card-stats">
+              <button class="stat-btn ${lc}" data-action="toggle-like" data-id="${img.id}"
+                      aria-label="${isLiked?'Retirer le like':'Liker'}" aria-pressed="${isLiked}">
+                <svg fill="${lf}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+                </svg>
+                <span>${img.likes}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  function skeleton() {
+    return `
+      <div class="image-card skeleton-card" aria-hidden="true">
+        <div class="card-img-wrap skeleton-img"></div>
+        <div class="card-info">
+          <div class="skeleton-line" style="width:85%;height:12px;margin-bottom:10px;border-radius:4px;"></div>
+          <div style="display:flex;justify-content:space-between;">
+            <div class="skeleton-line" style="width:40%;height:11px;border-radius:4px;"></div>
+            <div class="skeleton-line" style="width:20%;height:11px;border-radius:4px;"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  return { render, skeleton };
+})();
+
+/* ──────────────────────────────────────────────
+   COMPONENTS / COMMENTS
+   Comment rendering + anti-spam + max length.
+   ────────────────────────────────────────────── */
+const Comments = (() => {
+  function render(listEl, comments) {
+    const countEl = document.getElementById('commentsCount');
+    if (countEl) countEl.textContent = comments.length;
+
+    if (!comments.length) {
+      listEl.innerHTML = `<p class="comments-empty">Aucun commentaire. Soyez le premier !</p>`;
+      return;
+    }
+    listEl.innerHTML = comments.map(c => `
+      <div class="comment">
+        <div class="mini-avatar ${c.color||'c1'}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;"
+             aria-hidden="true">${Utils.escapeHtml(c.user)[0].toUpperCase()}</div>
+        <div class="comment-body">
+          <div class="comment-header">
+            <span class="comment-user">${Utils.escapeHtml(c.user)}</span>
+            <span class="comment-time">${Utils.escapeHtml(c.time)}</span>
+          </div>
+          <p class="comment-text">${Utils.escapeHtml(c.text)}</p>
+        </div>
+      </div>`).join('');
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  function submit() {
+    const input = document.getElementById('commentInput');
+    const text  = input?.value.trim();
+    const user  = Store.get('user');
+
+    if (!user)  { Auth.openModal('login'); return; }
+    if (!text)  return;
+
+    if (text.length > K.COMMENT_MAX_LENGTH) {
+      Toast.show(`Max ${K.COMMENT_MAX_LENGTH} caractères.`, 'error'); return;
+    }
+
+    // Anti-spam cooldown
+    const now  = Date.now();
+    const last = Store.get('lastCommentTime');
+    if (now - last < K.COMMENT_COOLDOWN_MS) {
+      const wait = Math.ceil((K.COMMENT_COOLDOWN_MS - (now - last)) / 1000);
+      Toast.show(`Attendez ${wait}s avant de commenter.`, 'error'); return;
+    }
+
+    Store.set('lastCommentTime', now);
+
+    const comment = {
+      user:  user.name,
+      text,
+      time:  'à l\'instant',
+      color: Utils.getAvatarColor(user.name),
+    };
+
+    const id = ImageModal._currentId;
+    if (!id) return;
+
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === id);
+    if (img) {
+      if (!img.comments) img.comments = [];
+      img.comments.push(comment);
+      render(document.getElementById('commentsList'), img.comments);
+    }
+
+    if (input) { input.value = ''; updateCounter(input); }
+  }
+
+  function updateCounter(input) {
+    const counter = document.getElementById('commentCounter');
+    if (!counter) return;
+    const remaining = K.COMMENT_MAX_LENGTH - input.value.length;
+    counter.textContent = remaining;
+    counter.classList.toggle('warn', remaining < 30);
+  }
+
+  return { render, submit, updateCounter };
+})();
+
+/* ──────────────────────────────────────────────
+   PAGE / GALLERY
+   Filter, search, infinite scroll, delegated events.
+   ────────────────────────────────────────────── */
+const Gallery = (() => {
+  let _observer = null;
+
+  function init() {
+    const searchEl = document.getElementById('gallerySearch');
+    if (searchEl) {
+      searchEl.addEventListener('input', Utils.debounce(e => {
+        Store.set('gallerySearch', e.target.value.toLowerCase());
+        Store.set('galleryPage',   1);
+        render();
+      }, 250));
+    }
+
+    // Single delegated listener on the grid
+    const grid = document.getElementById('galleryGrid');
+    if (grid) {
+      grid.addEventListener('click', _handleClick);
+      grid.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') _handleClick(e);
+      });
+    }
+
+    _setupInfiniteScroll();
+    render();
+  }
+
+  function render() {
+    const grid   = document.getElementById('galleryGrid');
+    if (!grid) return;
+
+    const filter  = Store.get('galleryFilter');
+    const search  = Store.get('gallerySearch');
+    const page    = Store.get('galleryPage');
+    const likedIds = Store.get('likedIds');
+    let data = [...Store.get('galleryData')];
+
+    if (filter === 'popular') data.sort((a,b) => b.likes - a.likes);
+    if (filter === 'recent')  data = data.reverse();
+
+    if (search) {
+      data = data.filter(img =>
+        img.prompt.toLowerCase().includes(search) ||
+        img.author.toLowerCase().includes(search)
+      );
+    }
+
+    const sliced = data.slice(0, page * K.GALLERY_PAGE_SIZE);
+
+    if (!sliced.length) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <h3>Aucune image trouvée</h3>
+          <p>Essayez d'autres mots-clés ou filtres.</p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = sliced.map(img =>
+      ImageCard.render(img, { isLiked: likedIds.has(img.id) })
+    ).join('');
+
+    // Infinite scroll sentinel
+    if (sliced.length < data.length) {
+      const sentinel = document.createElement('div');
+      sentinel.id = 'gallerysentinel';
+      sentinel.style.height = '20px';
+      grid.appendChild(sentinel);
+      if (_observer) _observer.observe(sentinel);
+    }
+  }
+
+  function _setupInfiniteScroll() {
+    _observer = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return;
+      Store.update('galleryPage', p => p + 1);
+
+      // Brief skeleton flicker for perceived load
+      const grid = document.getElementById('galleryGrid');
+      if (grid) {
+        const wrap = document.createElement('div');
+        wrap.style.display = 'contents';
+        wrap.innerHTML = Array.from({length:4}).map(() => ImageCard.skeleton()).join('');
+        grid.appendChild(wrap);
+        setTimeout(() => { wrap.remove(); render(); }, 350);
+      }
+    }, { rootMargin: '200px' });
+  }
+
+  function _handleClick(e) {
+    const el     = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    const id     = el.dataset.id;
+
+    if (action !== 'open-modal') e.stopPropagation();
+
+    switch (action) {
+      case 'open-modal':    ImageModal.open(id);   break;
+      case 'copy-prompt':   _copyPrompt(id);        break;
+      case 'remix':         _remix(id);             break;
+      case 'toggle-like':   _toggleLike(id);        break;
+    }
+  }
+
+  function _toggleLike(id) {
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === id);
+    if (!img) return;
+
+    const liked = new Set(Store.get('likedIds'));
+    if (liked.has(id)) { liked.delete(id); img.likes = Math.max(0, img.likes - 1); }
+    else               { liked.add(id); img.likes++; Toast.show('Liked ! ❤️'); }
+    Store.set('likedIds', liked);
+    render();
+  }
+
+  function _copyPrompt(id) {
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === id);
+    if (!img) return;
+    Utils.copyToClipboard(img.prompt)
+      .then(() => Toast.show('Prompt copié ! 📋'))
+      .catch(() => Toast.show('Copie impossible', 'error'));
+  }
+
+  function _remix(id) {
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === id);
+    if (!img) return;
+    const input = document.getElementById('promptInput');
+    if (input) input.value = img.prompt;
+    App.navigate('generate');
+    Toast.show('Prompt chargé pour remix !');
+  }
+
+  function setFilter(filter, btn) {
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    Store.set('galleryFilter', filter);
+    Store.set('galleryPage', 1);
+    render();
+  }
+
+  return { init, render, setFilter };
+})();
+
+/* ──────────────────────────────────────────────
+   PAGE / GENERATE
+   Prompt helpers, generation, canvas actions.
+   ────────────────────────────────────────────── */
+const Generate = (() => {
+  const _settings = { model:'FLUX.1 Pro', steps:28, cfg:7, style:'Aucun' };
+
+  function addTag(tag) {
+    const input = document.getElementById('promptInput');
+    if (!input) return;
+    const v = input.value.trim();
+    input.value = v ? `${v}, ${tag}` : tag;
+    input.focus();
+  }
+
+  function random() {
+    const input = document.getElementById('promptInput');
+    if (input) input.value = ImageService.getRandomPrompt();
+    Toast.show('Prompt aléatoire chargé ! 🎲');
+  }
+
+  function enhance() {
+    const input = document.getElementById('promptInput');
+    if (!input?.value.trim()) { Toast.show("Entrez d'abord un prompt.", 'error'); return; }
+    input.value = ImageService.improvePrompt(input.value);
+    Toast.show('Prompt amélioré ! ✨');
+  }
+
+  function setStyle(btn) {
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _settings.style = btn.textContent.trim();
+  }
+
+  function setModel(val) { _settings.model = val; }
+
+  async function trigger() {
+    const input  = document.getElementById('promptInput');
+    const prompt = input?.value.trim();
+    if (!prompt) { Toast.show("Entrez un prompt d'abord !", 'error'); return; }
+    if (Store.get('isGenerating')) return;
+
+    Store.set('isGenerating', true);
+    _setUI('loading');
+
+    try {
+      const result = await ImageService.generate(prompt, _settings, msg => {
+        const el = document.getElementById('loadingText');
+        if (el) el.textContent = msg;
+      });
+      Store.set('currentImg', result);
+      _setUI('done', result.url);
+      _addToRecent(result.url, prompt);
+      Toast.show('Image générée avec succès ! ✨');
+    } catch {
+      Toast.show('Erreur lors de la génération.', 'error');
+      _setUI('idle');
+    } finally {
+      Store.set('isGenerating', false);
+    }
+  }
+
+  function _setUI(state, imgUrl = '') {
+    const btn         = document.getElementById('generateBtn');
+    const placeholder = document.getElementById('canvasPlaceholder');
+    const loadingDiv  = document.getElementById('loadingState');
+    const img         = document.getElementById('generatedImg');
+
+    if (state === 'loading') {
+      btn.classList.add('loading');
+      btn.innerHTML = `<div class="loading-ring" style="width:18px;height:18px;border-width:2px;"></div> Génération...`;
+      placeholder.style.display = 'none';
+      img.style.display = 'none';
+      loadingDiv.style.display = 'flex';
+    }
+    if (state === 'done') {
+      btn.classList.remove('loading');
+      btn.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> GÉNÉRER`;
+      loadingDiv.style.display = 'none';
+      img.src = imgUrl; img.style.display = 'block'; img.style.animation = 'fadeUp .4s ease';
+    }
+    if (state === 'idle') {
+      btn.classList.remove('loading');
+      btn.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> GÉNÉRER`;
+      loadingDiv.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+  }
+
+  function _addToRecent(url, prompt) {
+    const container = document.getElementById('recentImages');
+    const empty     = document.getElementById('recentEmpty');
+    if (!container) return;
+    if (empty) empty.style.display = 'none';
+
+    const div = document.createElement('div');
+    div.className = 'recent-thumb';
+    div.setAttribute('tabindex', '0');
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-label', `Recharger: ${prompt}`);
+    div.innerHTML = `<img src="${url}" loading="lazy" alt="${prompt}" decoding="async"/>`;
+
+    const restore = () => {
+      const input = document.getElementById('promptInput');
+      if (input) input.value = prompt;
+      Store.set('currentImg', { url, prompt });
+      const imgEl = document.getElementById('generatedImg');
+      const ph    = document.getElementById('canvasPlaceholder');
+      if (imgEl) { imgEl.src = url; imgEl.style.display = 'block'; }
+      if (ph)    ph.style.display = 'none';
+    };
+    div.addEventListener('click',   restore);
+    div.addEventListener('keydown', e => { if (e.key === 'Enter') restore(); });
+
+    container.insertBefore(div, container.firstChild);
+    while (container.children.length > K.MAX_RECENT) container.lastChild.remove();
+  }
+
+  function download() {
+    const img = Store.get('currentImg');
+    if (!img) return;
+    const a = document.createElement('a');
+    a.href = img.url; a.download = 'genforge-image.png'; a.target = '_blank'; a.click();
+    Toast.show('Téléchargement lancé');
+  }
+
+  function save() {
+    const img  = Store.get('currentImg');
+    const user = Store.get('user');
+    if (!img)  return;
+    if (!user) { Auth.openModal('login'); Toast.show('Connectez-vous pour sauvegarder', 'error'); return; }
+    const entry = {
+      ...img,
+      id:          'u' + Date.now(),
+      author:      user.name,
+      authorColor: Utils.getAvatarColor(user.name),
+      likes:       0, time:'à l\'instant', comments:[],
+    };
+    Store.update('savedImages', imgs => [entry, ...imgs]);
+    Toast.show('Image sauvegardée dans votre profil ! 💾');
+  }
+
+  function remix() {
+    const img = Store.get('currentImg');
+    if (!img) return;
+    const input = document.getElementById('promptInput');
+    if (input) input.value = img.prompt;
+    Toast.show('Prompt chargé pour remix !');
+  }
+
+  function share() {
+    const img  = Store.get('currentImg');
+    const user = Store.get('user');
+    if (!img) { Toast.show("Générez d'abord une image", 'error'); return; }
+    const entry = {
+      ...img,
+      id:          'pub' + Date.now(),
+      author:      user ? user.name : 'Anonyme',
+      authorColor: user ? Utils.getAvatarColor(user.name) : 'c3',
+      likes:       0, time:'à l\'instant', comments:[],
+    };
+    Store.update('galleryData', data => [entry, ...data]);
+    Toast.show('Image partagée dans la galerie ! 🌍');
+  }
+
+  return { addTag, random, enhance, setStyle, setModel, trigger, download, save, remix, share };
+})();
+
+/* ──────────────────────────────────────────────
+   PAGE / FORGE
+   Variable builder, prompt combinator, public generators.
+   ────────────────────────────────────────────── */
+const Forge = (() => {
+  function init() {
+    if (!Store.get('generatorVars').length) {
+      Store.set('generatorVars', K.DEFAULT_FORGE_VARS.map(v => ({...v})));
+    }
+    _renderVars();
+    _renderPublicGenerators();
+  }
+
+  function _renderVars() {
+    const container = document.getElementById('variablesList');
+    if (!container) return;
+    const vars = Store.get('generatorVars');
+    container.innerHTML = vars.map((v, i) => `
+      <div class="variable-row">
+        <div class="var-header">
+          <span style="font-family:var(--font-mono);color:var(--accent3);">{</span>
+          <input class="var-name" type="text" value="${Utils.escapeHtml(v.name)}"
+            onchange="Forge._updateVarName(${i},this.value)" aria-label="Nom de la variable"/>
+          <span style="font-family:var(--font-mono);color:var(--accent3);">}</span>
+          <button onclick="Forge._removeVar(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;margin-left:auto;" aria-label="Supprimer la variable">×</button>
+        </div>
+        <div class="form-label" style="margin-bottom:4px;">Valeurs (une par ligne)</div>
+        <textarea class="var-values" rows="3" aria-label="Valeurs de la variable"
+          onchange="Forge._updateVarValues(${i},this.value)">${Utils.escapeHtml(v.values)}</textarea>
+      </div>`).join('');
+  }
+
+  function addVariable() {
+    const vars = Store.get('generatorVars');
+    Store.set('generatorVars', [...vars, { name:`variable${vars.length+1}`, values:'valeur1\nvaleur2\nvaleur3' }]);
+    _renderVars();
+  }
+
+  function _removeVar(idx) {
+    Store.update('generatorVars', vars => vars.filter((_,i) => i !== idx));
+    _renderVars();
+  }
+
+  function _updateVarName(idx, val) {
+    const vars = Store.get('generatorVars');
+    vars[idx].name = val;
+    Store.set('generatorVars', vars);
+  }
+
+  function _updateVarValues(idx, val) {
+    const vars = Store.get('generatorVars');
+    vars[idx].values = val;
+    Store.set('generatorVars', vars);
+  }
+
+  function updatePreview() { /* live preview hook — extend here */ }
+
+  function generatePrompts() {
+    const template  = document.getElementById('templateInput')?.value || '';
+    const vars      = Store.get('generatorVars');
+    const container = document.getElementById('generatedPrompts');
+    if (!container) return;
+
+    const results = Array.from({length:5}).map(() => {
+      let p = template;
+      vars.forEach(v => {
+        const vals = v.values.split('\n').filter(x => x.trim());
+        if (vals.length) p = p.split(`{${v.name}}`).join(Utils.randomPick(vals).trim());
+      });
+      return p;
+    });
+
+    container.innerHTML = results.map(p => `
+      <div class="gen-prompt-item" role="button" tabindex="0"
+           onclick="Forge._usePrompt(this)" onkeydown="if(event.key==='Enter')Forge._usePrompt(this)">
+        <span>${Utils.escapeHtml(p)}</span>
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+             style="flex-shrink:0;color:var(--text3)" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>`).join('');
+  }
+
+  function _usePrompt(el) {
+    const text = el.querySelector('span').textContent;
+    const input = document.getElementById('promptInput');
+    if (input) input.value = text;
+    App.navigate('generate');
+    Toast.show('Prompt chargé ! Cliquez sur Générer.');
+  }
+
+  function generateAndUse() {
+    generatePrompts();
+    setTimeout(() => {
+      const first = document.querySelector('.gen-prompt-item');
+      if (first) _usePrompt(first);
+    }, 60);
+  }
+
+  function save() {
+    const user = Store.get('user');
+    if (!user) { Auth.openModal('login'); return; }
+    const gen = {
+      id:       Utils.uid('gen'),
+      template: document.getElementById('templateInput')?.value || '',
+      vars:     Store.get('generatorVars'),
+      author:   user.name,
+      time:     'à l\'instant',
+    };
+    Store.update('savedGenerators', gens => [gen, ...gens]);
+    const s = document.getElementById('statForges');
+    if (s) s.textContent = Store.get('savedGenerators').length;
+    Toast.show('Générateur sauvegardé ! 🔧');
+  }
+
+  function _renderPublicGenerators() {
+    const container = document.getElementById('publicGenerators');
+    if (!container) return;
+    container.innerHTML = K.PUBLIC_GENERATORS.map(g => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .15s;"
+           tabindex="0" role="button"
+           onmouseenter="this.style.borderColor='var(--accent2)'"
+           onmouseleave="this.style.borderColor='var(--border)'"
+           onclick="Forge._loadGenerator('${g.id}')"
+           onkeydown="if(event.key==='Enter')Forge._loadGenerator('${g.id}')"
+           aria-label="Charger le générateur ${Utils.escapeHtml(g.name)}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-weight:600;font-size:14px;">${Utils.escapeHtml(g.name)}</span>
+          <span class="badge badge-accent">${g.uses} uses</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text3);margin-bottom:8px;">${Utils.escapeHtml(g.template)}</div>
+        <div style="font-size:12px;color:var(--text2);">par ${Utils.escapeHtml(g.author)}</div>
+      </div>`).join('');
+  }
+
+  function _loadGenerator(id) {
+    const gen = K.PUBLIC_GENERATORS.find(g => g.id === id);
+    if (!gen) return;
+    const inputEl = document.getElementById('templateInput');
+    if (inputEl) inputEl.value = gen.template;
+    Store.set('generatorVars',
+      Object.entries(gen.vars).map(([name, vals]) => ({ name, values: vals.join('\n') }))
+    );
+    _renderVars();
+    Toast.show(`Générateur "${gen.name}" chargé !`);
+  }
+
+  return {
+    init, addVariable, updatePreview, generatePrompts, generateAndUse, save,
+    _removeVar, _updateVarName, _updateVarValues, _usePrompt, _loadGenerator,
+  };
+})();
+
+/* ──────────────────────────────────────────────
+   PAGE / PROFILE
+   User stats + tab switching.
+   ────────────────────────────────────────────── */
+const Profile = (() => {
+  function render() {
+    const out = document.getElementById('profileLoggedOut');
+    const inn = document.getElementById('profileLoggedIn');
+    const user = Store.get('user');
+
+    if (!user) {
+      out.style.display = 'block';
+      inn.style.display = 'none';
+      return;
+    }
+    out.style.display = 'none';
+    inn.style.display = 'block';
+
+    const color = Utils.getAvatarColor(user.name);
+    const av    = document.getElementById('profileAvatarBig');
+    if (av) { av.textContent = user.name[0].toUpperCase(); av.className = `profile-avatar-big ${color}`; }
+
+    const nameEl   = document.getElementById('profileName');
+    const handleEl = document.getElementById('profileHandle');
+    if (nameEl)   nameEl.textContent   = user.name;
+    if (handleEl) handleEl.textContent = '@' + user.name.toLowerCase().replace(/\s/g,'');
+
+    _renderCreations();
+    _updateStats();
+  }
+
+  function _renderCreations() {
+    const grid  = document.getElementById('userImagesGrid');
+    const empty = document.getElementById('userImagesEmpty');
+    const saved = Store.get('savedImages');
+    if (!grid) return;
+    if (!saved.length) { grid.innerHTML = ''; empty.style.display='flex'; return; }
+    empty.style.display = 'none';
+    const likedIds = Store.get('likedIds');
+    grid.innerHTML = saved.map(img => ImageCard.render(img, { isLiked: likedIds.has(img.id) })).join('');
+  }
+
+  function _updateStats() {
+    const saved = Store.get('savedImages');
+    const s1 = document.getElementById('statCreations');
+    const s2 = document.getElementById('statLikes');
+    const s3 = document.getElementById('statForges');
+    if (s1) s1.textContent = saved.length;
+    if (s2) s2.textContent = saved.reduce((a,b) => a + (b.likes||0), 0);
+    if (s3) s3.textContent = Store.get('savedGenerators').length;
+  }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.ptab').forEach(t => {
+      t.classList.remove('active'); t.setAttribute('aria-selected','false');
+    });
+    btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+    Store.set('profileTab', tab);
+
+    document.getElementById('profileCreations').style.display  = tab==='creations'  ? 'block' : 'none';
+    document.getElementById('profileFavorites').style.display  = tab==='favorites'  ? 'block' : 'none';
+    document.getElementById('profileGenerators').style.display = tab==='generators' ? 'block' : 'none';
+
+    if (tab === 'favorites')  _renderFavorites();
+    if (tab === 'generators') _renderSavedGenerators();
+  }
+
+  function _renderFavorites() {
+    const grid  = document.getElementById('userFavGrid');
+    const empty = document.getElementById('userFavEmpty');
+    const favs  = Store.get('galleryData').filter(i => Store.get('likedIds').has(i.id));
+    if (!grid) return;
+    if (!favs.length) { grid.innerHTML = ''; empty.style.display='flex'; return; }
+    empty.style.display = 'none';
+    grid.innerHTML = favs.map(img => ImageCard.render(img, { isLiked:true })).join('');
+  }
+
+  function _renderSavedGenerators() {
+    const grid  = document.getElementById('savedGeneratorsGrid');
+    const empty = document.getElementById('savedGeneratorsEmpty');
+    const gens  = Store.get('savedGenerators');
+    if (!grid) return;
+    if (!gens.length) { grid.innerHTML = ''; empty.style.display='flex'; return; }
+    empty.style.display = 'none';
+    grid.innerHTML = gens.map(g => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px;">
+        <div style="font-weight:600;margin-bottom:4px;">${Utils.escapeHtml(g.template.slice(0,60))}…</div>
+        <div style="font-size:12px;color:var(--text3);">${g.vars.length} variables · ${g.time}</div>
+      </div>`).join('');
+  }
+
+  return { render, switchTab };
+})();
+
+/* ──────────────────────────────────────────────
+   COMPONENTS / IMAGE MODAL
+   Detail view with comments.
+   ────────────────────────────────────────────── */
+const ImageModal = (() => {
+  let _currentId = null;
+
+  function open(id) {
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === id);
+    if (!img) return;
+    _currentId = id;
+
+    const liked  = Store.get('likedIds');
+    document.getElementById('imgModalImg').src      = img.url;
+    document.getElementById('imgModalAuthor').textContent = img.author;
+    document.getElementById('imgModalTime').textContent   = img.time;
+    document.getElementById('imgModalPrompt').textContent = img.prompt;
+    document.getElementById('imgModalLikes').textContent  = img.likes;
+    document.getElementById('imgModalModel').textContent  = img.model || '';
+    document.getElementById('imgModalLikeBtn').className  = 'stat-btn ' + (liked.has(id)?'liked':'');
+
+    const av = document.getElementById('imgModalAvatar');
+    av.textContent = img.author[0].toUpperCase();
+    av.className   = `mini-avatar ${img.authorColor||'c1'}`;
+
+    Comments.render(document.getElementById('commentsList'), img.comments || []);
+    document.getElementById('imgModal').classList.add('open');
+    document.getElementById('commentInput').focus();
+  }
+
+  function close() {
+    document.getElementById('imgModal').classList.remove('open');
+    _currentId = null;
+  }
+
+  function download() {
+    const src = document.getElementById('imgModalImg').src;
+    if (!src) return;
+    const a = document.createElement('a');
+    a.href = src; a.download = 'genforge.png'; a.target = '_blank'; a.click();
+  }
+
+  function remix() {
+    const prompt = document.getElementById('imgModalPrompt').textContent;
+    const input  = document.getElementById('promptInput');
+    if (input) input.value = prompt;
+    close();
+    App.navigate('generate');
+    Toast.show('Prompt chargé !');
+  }
+
+  function copyPrompt() {
+    const prompt = document.getElementById('imgModalPrompt').textContent;
+    Utils.copyToClipboard(prompt)
+      .then(() => Toast.show('Prompt copié ! 📋'))
+      .catch(() => Toast.show('Copie impossible', 'error'));
+  }
+
+  function toggleLike() {
+    if (!_currentId) return;
+    const allData = [...Store.get('galleryData'), ...Store.get('savedImages')];
+    const img     = allData.find(i => i.id === _currentId);
+    if (!img) return;
+
+    const liked = new Set(Store.get('likedIds'));
+    if (liked.has(_currentId)) { liked.delete(_currentId); img.likes=Math.max(0,img.likes-1); }
+    else                       { liked.add(_currentId);    img.likes++; Toast.show('Liked ! ❤️'); }
+    Store.set('likedIds', liked);
+    document.getElementById('imgModalLikes').textContent = img.likes;
+    document.getElementById('imgModalLikeBtn').className = 'stat-btn ' + (liked.has(_currentId)?'liked':'');
+    Gallery.render();
+  }
+
+  // Expose for Comments module
+  return { open, close, download, remix, copyPrompt, toggleLike, get _currentId() { return _currentId; } };
+})();
+
+/* ──────────────────────────────────────────────
+   COMPONENTS / AUTH
+   Modal management + delegation to AuthService.
+   ────────────────────────────────────────────── */
+const Auth = (() => {
+  function openModal(type) {
+    document.getElementById('loginForm').style.display    = type==='login'    ? 'block':'none';
+    document.getElementById('registerForm').style.display = type==='register' ? 'block':'none';
+    document.getElementById('authModal').classList.add('open');
+    // Focus first input for accessibility
+    setTimeout(() => {
+      const first = document.querySelector('#authModal input:not([type="hidden"])');
+      if (first) first.focus();
+    }, 320);
+  }
+
+  function closeModal() { document.getElementById('authModal').classList.remove('open'); }
+
+  function switchModal(type) {
+    document.getElementById('loginForm').style.display    = type==='login'    ? 'block':'none';
+    document.getElementById('registerForm').style.display = type==='register' ? 'block':'none';
+  }
+
+  function login() {
+    const result = AuthService.login(
+      document.getElementById('loginEmail').value,
+      document.getElementById('loginPass').value
+    );
+    if (!result.ok) { Toast.show(result.error, 'error'); return; }
+    _setUser(result.user);
+  }
+
+  function loginDemo() {
+    _setUser(AuthService.demoLogin().user);
+  }
+
+  function register() {
+    const result = AuthService.register(
+      document.getElementById('regName').value,
+      document.getElementById('regEmail').value,
+      document.getElementById('regPass').value
+    );
+    if (!result.ok) { Toast.show(result.error, 'error'); return; }
+    _setUser(result.user);
+  }
+
+  function _setUser(user) {
+    Store.set('user', user);
+    closeModal();
+    _updateNav();
+    Toast.show(`Bienvenue, ${user.name} ! 🎉`);
+  }
+
+  function logout() {
+    Store.set('user', null);
+    _updateNav();
+    Profile.render();
+    Toast.show('Déconnecté', 'info');
+  }
+
+  function _updateNav() {
+    const navRight = document.getElementById('navRight');
+    const user = Store.get('user');
+    if (user) {
+      navRight.innerHTML = `
+        <div class="avatar ${Utils.getAvatarColor(user.name)}"
+             onclick="App.navigate('profile')" role="button" tabindex="0"
+             title="${Utils.escapeHtml(user.name)}"
+             aria-label="Mon profil — ${Utils.escapeHtml(user.name)}">
+          ${user.name[0].toUpperCase()}
+        </div>`;
+    } else {
+      navRight.innerHTML = `
+        <button class="btn btn-sm" onclick="Auth.openModal('login')">Connexion</button>
+        <button class="btn btn-primary btn-sm" onclick="Auth.openModal('register')">S'inscrire</button>`;
+    }
+  }
+
+  return { openModal, closeModal, switchModal, login, loginDemo, register, logout };
+})();
+
+/* ──────────────────────────────────────────────
+   APP
+   Top-level: navigation, particles, global events.
+   ────────────────────────────────────────────── */
+const App = (() => {
+  const PAGES = ['generate', 'gallery', 'forge', 'profile'];
+
+  function navigate(page) {
+    if (!PAGES.includes(page)) return;
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+
+    document.getElementById(`page-${page}`).classList.add('active');
+    const t1 = document.getElementById(`tab-${page}`);
+    const t2 = document.getElementById(`mtab-${page}`);
+    if (t1) { t1.classList.add('active'); t1.setAttribute('aria-selected','true'); }
+    if (t2) { t2.classList.add('active'); t2.setAttribute('aria-selected','true'); }
+
+    Store.set('currentPage', page);
+    if (page === 'gallery') Gallery.render();
+    if (page === 'forge')   Forge.init();
+    if (page === 'profile') Profile.render();
+  }
+
+  function _initParticles() {
+    const container = document.getElementById('particles');
+    if (!container) return;
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.cssText = `left:${Math.random()*100}%;--d:${6+Math.random()*10}s;--del:${Math.random()*8}s;--tx:${(Math.random()-.5)*100}px;`;
+      if (i%3===1) p.style.background='var(--accent3)';
+      if (i%3===2) p.style.background='var(--accent2)';
+      container.appendChild(p);
+    }
+  }
+
+  function _initEvents() {
+    // Close modals on overlay click
+    document.getElementById('authModal').addEventListener('click', e => { if(e.target===e.currentTarget) Auth.closeModal(); });
+    document.getElementById('imgModal').addEventListener('click',  e => { if(e.target===e.currentTarget) ImageModal.close(); });
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { Auth.closeModal(); ImageModal.close(); }
+    });
+
+    // Logo keyboard nav
+    document.querySelector('.logo').addEventListener('keydown', e => {
+      if (e.key === 'Enter') navigate('generate');
+    });
+  }
+
+  function init() {
+    _initParticles();
+    _initEvents();
+    Gallery.init();
+    Forge.init();
+    Auth._updateNav?.(); // render nav state
+  }
+
+  return { navigate, init };
+})();
+
+// ── BOOT ─────────────────────────────────────
+App.init();
+</script>
+</body>
+</html>
