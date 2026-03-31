@@ -1286,14 +1286,14 @@ const K = (() => {
   ];
 
   const SAMPLE_GALLERY = [
-    { id:'g1', url:'https://picsum.photos/seed/art1/512/512', prompt:'Guerrier cyberpunk sous la pluie neon, 8k ultra detailed', author:'NeonByte',   authorColor:'c1', likes:142, time:'2h',  model:'FLUX.1 Pro', comments:[] },
-    { id:'g2', url:'https://picsum.photos/seed/art2/512/512', prompt:'Dragonne de cristal dans une forêt enchantée, fantasy style', author:'AstralCraft', authorColor:'c2', likes:89,  time:'4h',  model:'SDXL',      comments:[] },
-    { id:'g3', url:'https://picsum.photos/seed/art3/512/512', prompt:'Astronaute solitaire sur Mars, golden hour, cinematic', author:'VoidPainter', authorColor:'c3', likes:234, time:'6h',  model:'FLUX.1 Pro', comments:[] },
-    { id:'g4', url:'https://picsum.photos/seed/art4/512/512', prompt:'Géisha futuriste, lumières holographiques, anime style', author:'SakurAI',    authorColor:'c5', likes:178, time:'8h',  model:'SD3',       comments:[] },
-    { id:'g5', url:'https://picsum.photos/seed/art5/512/512', prompt:'Ville flottante au coucher de soleil, steampunk, volumetric fog', author:'CloudForge', authorColor:'c4', likes:95, time:'12h', model:'FLUX.1 Pro', comments:[] },
-    { id:'g6', url:'https://picsum.photos/seed/art6/512/512', prompt:'Portrait alien bioluminescent, fond sombre, studio lighting', author:'NeonByte', authorColor:'c1', likes:312, time:'1j', model:'Midjourney', comments:[] },
-    { id:'g7', url:'https://picsum.photos/seed/art7/512/512', prompt:'Forêt de bambou éthérée, brume matinale, photo réaliste', author:'ZenPixel', authorColor:'c6', likes:67, time:'1j', model:'SDXL', comments:[] },
-    { id:'g8', url:'https://picsum.photos/seed/art8/512/512', prompt:'Robot vintage servant du thé, ambiance victorienne', author:'SteamCog', authorColor:'c2', likes:123, time:'2j', model:'SD3', comments:[] },
+    { id:'g1', url:'https://image.pollinations.ai/prompt/cyberpunk%20warrior%20neon%20rain%208k%20ultra%20detailed?width=512&height=512&seed=101&model=flux&nologo=true', prompt:'Guerrier cyberpunk sous la pluie neon, 8k ultra detailed', author:'NeonByte',   authorColor:'c1', likes:142, time:'2h',  model:'FLUX.1 Pro', comments:[] },
+    { id:'g2', url:'https://image.pollinations.ai/prompt/crystal%20dragon%20enchanted%20forest%20fantasy%20volumetric%20fog?width=512&height=512&seed=202&model=flux&nologo=true', prompt:'Dragonne de cristal dans une forêt enchantée, fantasy style', author:'AstralCraft', authorColor:'c2', likes:89,  time:'4h',  model:'SDXL',      comments:[] },
+    { id:'g3', url:'https://image.pollinations.ai/prompt/lonely%20astronaut%20on%20Mars%20golden%20hour%20cinematic%20photorealistic?width=512&height=512&seed=303&model=flux&nologo=true', prompt:'Astronaute solitaire sur Mars, golden hour, cinematic', author:'VoidPainter', authorColor:'c3', likes:234, time:'6h',  model:'FLUX.1 Pro', comments:[] },
+    { id:'g4', url:'https://image.pollinations.ai/prompt/futuristic%20geisha%20holographic%20lights%20anime%20ultra%20detailed?width=512&height=512&seed=404&model=flux&nologo=true', prompt:'Géisha futuriste, lumières holographiques, anime style', author:'SakurAI',    authorColor:'c5', likes:178, time:'8h',  model:'SD3',       comments:[] },
+    { id:'g5', url:'https://image.pollinations.ai/prompt/floating%20steampunk%20city%20sunset%20dramatic%20sky%20concept%20art?width=512&height=512&seed=505&model=flux&nologo=true', prompt:'Ville flottante au coucher de soleil, steampunk, volumetric fog', author:'CloudForge', authorColor:'c4', likes:95, time:'12h', model:'FLUX.1 Pro', comments:[] },
+    { id:'g6', url:'https://image.pollinations.ai/prompt/bioluminescent%20alien%20portrait%20dark%20background%20studio%20lighting%204k?width=512&height=512&seed=606&model=flux&nologo=true', prompt:'Portrait alien bioluminescent, fond sombre, studio lighting', author:'NeonByte', authorColor:'c1', likes:312, time:'1j', model:'Midjourney', comments:[] },
+    { id:'g7', url:'https://image.pollinations.ai/prompt/ethereal%20bamboo%20forest%20morning%20mist%20photorealistic%20sunrise?width=512&height=512&seed=707&model=flux&nologo=true', prompt:'Forêt de bambou éthérée, brume matinale, photo réaliste', author:'ZenPixel', authorColor:'c6', likes:67, time:'1j', model:'SDXL', comments:[] },
+    { id:'g8', url:'https://image.pollinations.ai/prompt/vintage%20robot%20serving%20tea%20victorian%20interior%20sepia%20warm%20tones?width=512&height=512&seed=808&model=flux&nologo=true', prompt:'Robot vintage servant du thé, ambiance victorienne', author:'SteamCog', authorColor:'c2', likes:123, time:'2j', model:'SD3', comments:[] },
   ];
 
   const PUBLIC_GENERATORS = [
@@ -1382,30 +1382,54 @@ const Store = (() => {
    ────────────────────────────────────────────── */
 const ImageService = (() => {
   /**
-   * Simulates image generation.
-   * Swap the setTimeout body for a real fetch() to plug into any API.
+   * Vraie génération IA via Pollinations.ai — gratuit, sans clé API.
+   * https://pollinations.ai
    */
   function generate(prompt, settings, onProgress) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       let i = 0;
       const interval = setInterval(() => {
         onProgress(K.LOADING_MESSAGES[i++ % K.LOADING_MESSAGES.length]);
       }, 600);
 
-      const seed  = Math.floor(Math.random() * 99999);
-      const delay = 2600 + Math.random() * 1400;
+      const seed   = Math.floor(Math.random() * 99999);
+      const width  = 1024;
+      const height = 1024;
 
-      setTimeout(() => {
+      // Choisir le modèle Pollinations selon la sélection
+      const modelMap = {
+        'FLUX.1 Pro':        'flux',
+        'SDXL Lightning':    'turbo',
+        'Stable Diffusion 3':'flux',
+        'Midjourney v6 (sim)':'flux-realism',
+      };
+      const pollinationsModel = modelMap[settings.model] || 'flux';
+
+      // L'URL encode le prompt — Pollinations génère l'image à la volée
+      const encodedPrompt = encodeURIComponent(prompt);
+      const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=${pollinationsModel}&nologo=true`;
+
+      // On charge l'image via un élément Image pour détecter fin de génération
+      const img = new Image();
+
+      img.onload = () => {
         clearInterval(interval);
         resolve({
-          id:     Utils.uid('img'),
-          url:    `https://picsum.photos/seed/${seed}/1024/1024`,
+          id:    Utils.uid('img'),
+          url,
           prompt,
-          model:  settings.model || 'FLUX.1 Pro',
+          model: settings.model || 'FLUX.1 Pro',
           seed,
-          time:   'à l\'instant',
+          time:  'à l\'instant',
         });
-      }, delay);
+      };
+
+      img.onerror = () => {
+        clearInterval(interval);
+        reject(new Error('Erreur Pollinations'));
+      };
+
+      img.src = url;
     });
   }
 
@@ -1823,8 +1847,8 @@ const Generate = (() => {
       _setUI('done', result.url);
       _addToRecent(result.url, prompt);
       Toast.show('Image générée avec succès ! ✨');
-    } catch {
-      Toast.show('Erreur lors de la génération.', 'error');
+    } catch (err) {
+      Toast.show('Erreur de génération — vérifie ta connexion.', 'error');
       _setUI('idle');
     } finally {
       Store.set('isGenerating', false);
